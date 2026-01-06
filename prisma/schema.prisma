@@ -1,0 +1,102 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DB_URL")
+}
+
+model User {
+  id           String  @id @default(uuid())
+  name         String
+  username     String  @unique
+  email        String  @unique
+  passwordHash String
+  refreshToken String  @unique
+  avatarUrl    String?
+  website      String?
+  location     String?
+  bio          String?
+
+  createdAt DateTime @default(now())
+
+  Workspace Workspace[]
+}
+
+enum WorkspaceType {
+  Public
+  Private
+}
+
+model Workspace {
+  id           String        @id @default(uuid())
+  createdBy    String
+  name         String
+  type         WorkspaceType
+  banner       String?
+  activeBranch String?
+  createdAt    DateTime      @default(now())
+
+  User     User       @relation(fields: [createdBy], references: [id], onDelete: Cascade, onUpdate: Cascade) // If user deleted then workspace also
+  Videos   Videos[]
+  Branch   Branch[]
+  Versions Versions[]
+}
+
+enum VideoState {
+  Processing
+  Uploaded
+}
+
+model Videos {
+  id          String     @id @default(uuid())
+  workspace   String
+  width       Int
+  height      Int
+  version     String
+  state       VideoState
+  contentType String
+  createdAt   DateTime   @default(now())
+
+  Workspace Workspace @relation(fields: [workspace], references: [id], onDelete: Cascade, onUpdate: Cascade) // If workspace deleted then videos also
+  Version   Versions  @relation(fields: [version], references: [id], onDelete: Cascade, onUpdate: Cascade) // If version deleted then videos also
+}
+
+model Segment {
+  id               String @id @default(uuid())
+  hash             String @unique
+  numberOfInstance Int    @default(1)
+}
+
+model Branch {
+  id                 String   @id @default(uuid())
+  name               String
+  workspace          String
+  createdFromVersion String?
+  activeVersion      String?
+  createdAt          DateTime @default(now())
+
+  Workspace Workspace? @relation(fields: [workspace], references: [id], onUpdate: Cascade, onDelete: Cascade) // If workspace deleted then branch also
+  Versions  Versions[]
+}
+
+model Versions {
+  id            String   @id @default(uuid())
+  branch        String
+  workspace     String
+  commitMessage String
+  createdAt     DateTime @default(now())
+  parentVersion String?
+
+  Branch    Branch    @relation(fields: [branch], references: [id], onDelete: Cascade, onUpdate: Cascade) // If branch deleted then versions also
+  Workspace Workspace @relation(fields: [workspace], references: [id]) // If workspace deleted then versions also
+  Videos    Videos[]
+}
